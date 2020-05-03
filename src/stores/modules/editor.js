@@ -23,9 +23,17 @@ const state = {
     portLabel: null,
     sourceX: null,
     sourceY: null,
-    currentX: null,
-    currentY: null,
+    currentX: 0,
+    currentY: 0,
   },
+  dragPortType: 0,
+  isDragMode: false,
+  svgPos: {
+    x: 0,
+    y: 0,
+  },
+  edges: [],
+  canCreateFile: false,
 }
 
 // getters
@@ -44,10 +52,15 @@ const getters = {
   isPortClicked: state => state.isPortClicked,
   isPortDragging: state => state.isPortDragging,
   mouseSVGPos: state => (x, y) => {
-    this.pt.x = x;
-    this.pt.y = y;
-    return pt.matrixTransform(this.svg.getScreenCTM().inverse());
-  }
+    state.pt.x = x;
+    state.pt.y = y;
+    return state.pt.matrixTransform(state.svgarea.getScreenCTM().inverse());
+  },
+  draggingPort: state => state.draggingPort,
+  canCreateFile: state => state.canCreateFile,
+  isDragMode: state => state.isDragMode,
+  svgPos: state => state.svgPos,
+  dragPortType: state => state.dragPortType,
 }
 
 const actions = {
@@ -111,16 +124,60 @@ const mutations = {
   setIsPortClickedStatus(state, current) {
     state.isPortClicked = current;
   },
-  setDraggingPortInfo(state, {portId, portLabel, sourceX, sourceY}) {
+  setIsPortDraggingStatus(state, current) {
+    state.isPortDragging = current;
+  },
+  setDraggingPortInfo(state, {sourceNodeId, portId, portLabel, sourceX, sourceY}) {
     let tmp = _.cloneDeep(state.draggingPort);
     tmp.portId = portId;
     tmp.portLabel = portLabel;
     tmp.sourceX = sourceX;
     tmp.sourceY = sourceY;
+    tmp.sourceNodeId = sourceNodeId;
 
     state.draggingPort = tmp;
+  },
+  setDraggingPortPos(state, {x, y}) {
+    let tmp = _.cloneDeep(state.draggingPort);
+    tmp.currentX = x;
+    tmp.currentY = y;
+
+    state.draggingPort = tmp;
+  },
+  setCanCreateFile(state, current) {
+    state.canCreateFile = current;
+  },
+  updateSVGPos(state, {x, y}) {
+    let tmp = _.cloneDeep(state.svgPos);
+    tmp.x = x;
+    tmp.y = y;
+    state.svgPos = tmp;
+  },
+  setIsDragMode(state, current) {
+    state.isDragMode = current;
+  },
+  setDragPortType(state, current) {
+    state.dragPortType = current;
+  },
+  setPath(state, o) {
+    let steps = state.pipeline.steps;
+    if(o.dist < 20) {
+      let tmp;
+      if(o.portType == "input") {
+        tmp = _.cloneDeep(steps[o.nIdx].inputs[o.pIdx]);
+        tmp.sourceNodeId = o.nId;
+        tmp.sourcePortId = o.pId;
+        steps[o.nIdx].inputs.splice(o.pIdx, 1, tmp);
+      } else {
+        tmp = _.cloneDeep(steps[o.nIdx].inputs[o.pIdx]);
+        tmp.sourceNodeId = o.nId;
+        tmp.sourcePortId = o.pId;
+        steps[o.nIdx].outputs.splice(o.pIdx, 1, tmp);
+      }
+      
+    }
   }
-  
+
 }
 
 

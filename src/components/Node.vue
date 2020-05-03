@@ -15,14 +15,14 @@
       :key="'input' + index"
       :info="input"
       :nodeIdx="idx"
-      :type=1>
+      :type="'input'">
     </Port>
     <Port
       v-for="(output, index) in outputs"
       :key="'output' + index"
       :info="output"
       :nodeIdx="idx"
-      :type=-1>
+      :type="'output'">
     </Port>
   </g>
    
@@ -46,6 +46,7 @@ export default {
       'draggingTool',
       'getStepByIdx',
       'nodeClicked',
+      'draggingPort',
     ]),
     gCoreStyle() {
       let style = {mousedown: () => this.setNodeState(true), mouseup: () => this.setNodeState(false)};

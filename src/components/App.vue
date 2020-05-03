@@ -19,8 +19,12 @@
             :key="tool.id"
             :idx="index">
           </Node>
-          <PortPath></PortPath>
-          <GhostCircle></GhostCircle>
+          <Edge 
+            v-for="(edge, idx) in edges"
+            :key="`edge`+idx"
+            :info="edge"></Edge>
+          <VirtualEdge v-if="isPortDragging"></VirtualEdge>
+          <GhostCircle v-if="isPortDragging"></GhostCircle>
         </svg>
       </svg>
     </div>
@@ -35,6 +39,8 @@
 import { mapState, mapActions, mapGetters, mapMutations } from 'vuex';
 import Node from './Node';
 import GhostCircle from './GhostCircle';
+import Edge from './Edge';
+import VirtualEdge from './VirtualEdge';
 import _ from 'lodash';
 
 export default {
@@ -42,6 +48,8 @@ export default {
   components: {
     Node,
     GhostCircle,
+    VirtualEdge,
+    Edge,
   },
   computed: {
     ...mapGetters([
@@ -51,9 +59,23 @@ export default {
       'draggingTool',
       'steps',
       'isPortDragging',
+      'isDragMode',
+      'mouseSVGPos',
     ]),
-    canCreateFile() {
-      //모든 포트들과 현재 마우스 커서의 위치 차이
+    edges() {
+      console.log("edges called");
+      //let edges = this.steps.filter(step => step.inputs.some(input => input.sourceNodeId != null));
+      let edges = [];
+      this.steps.map(step => {
+        step.inputs.map(input => {
+          if(input.sourceNodeId != null) {
+            input.desX = step.svgX + input.x;
+            input.desY = step.svgY + input.y;
+            edges.push(input);
+          }
+        });
+      });
+      return edges;
     }
   },
   methods: {
@@ -64,7 +86,9 @@ export default {
       'setDraggingTool',
       'setDraggingToolSVGPos',
       'addTool',
-      'setSVGAreaAndPt'
+      'setSVGAreaAndPt',
+      'updateSVGPos',
+      'setIsDragMode',
     ]),
     toolItemClick(e, tool) {
       e.preventDefault();
@@ -111,6 +135,13 @@ export default {
   },
   mounted: function() {
     this.setSVGAreaAndPt(this.$refs.svgarea);
+  },
+  handleMouseMove: function(e) {
+    let pos = this.mouseSVGPos(e.clientX, e.clientY);
+    this.updateSVGPos({x: pos.x, y: pos.y});
+  },
+  handleMouseUp: function(e) {
+    this.setIsDragMode(false);
   }
 }
 </script>
