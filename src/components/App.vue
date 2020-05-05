@@ -22,6 +22,7 @@
             :idx="idx"
             :data="tool">
           </Tool>
+          <File></File>
           <Edge 
             v-for="(edge, idx) in edges"
             :key="'edge'+idx"
@@ -201,7 +202,12 @@ export default {
       if(minDistPort.dist < 50) {
         this.addToolToPipeline(minDistPort);
       } else if(this.distFromMouseToDraggingPort >= 50) {
-        //addFile
+        if(this.draggingPort.type == 'input') {
+          //input file
+          
+        } else {
+          //output file
+        }
       }
     }
   },

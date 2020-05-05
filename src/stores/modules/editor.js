@@ -1,67 +1,128 @@
 import editor from '../../api/editor';
 import _ from 'lodash';
 
-// initial state
-const state = {
-  tools: [],
+const state ={
+  pt: null,
+  area: null,
+  usableTools: [],
+  draggingTool: {},
+  newToolStatus: 'none',
   pipeline: {
     inputs: [],
     outputs: [],
-    steps: []
+    tools: []
   },
-  isClicked: false,
-  isDragging: false,
-  draggingTool: {},
-  toolId: 1,
-  pt: null,
-  svgarea: null,
-  isNodeClicked: false,
-  isPortClicked: false,
-  isPortDragging: false,
-  draggingPort: {
-    portId: null,
-    portLabel: null,
-    sourceX: null,
-    sourceY: null,
-    currentX: 0,
-    currentY: 0,
-  },
-  dragPortType: 0,
-  isDragMode: false,
-  svgPos: {
-    x: 0,
-    y: 0,
-  },
-  edges: [],
+  toolId: 0,
+  draggingPort: {},
+  draggingPortStatus: 'none',
   canCreateFile: false,
-}
+};
 
-// getters
 const getters = {
-  tools: state => {
-    return state.tools;
-  },
-  isClicked: state => state.isClicked,
-  isDragging: state => state.isDragging,
+  usableTools: state => state.usableTools,
+  newToolStatus: state => state.newToolStatus,
   draggingTool: state => state.draggingTool,
-  steps: state => state.pipeline.steps,
-  getStepByIdx: (state) => (idx) => {
-    return state.pipeline.steps[idx];
-  },
-  nodeClicked: state => state.isNodeClicked,
-  isPortClicked: state => state.isPortClicked,
-  isPortDragging: state => state.isPortDragging,
-  mouseSVGPos: state => (x, y) => {
-    state.pt.x = x;
-    state.pt.y = y;
-    return state.pt.matrixTransform(state.svgarea.getScreenCTM().inverse());
-  },
+  area: state => state.area,
+  pt: state => state.pt,
+  pipeline: state => state.pipeline,
+  draggingPortStatus: state => state.draggingPortStatus,
   draggingPort: state => state.draggingPort,
   canCreateFile: state => state.canCreateFile,
-  isDragMode: state => state.isDragMode,
-  svgPos: state => state.svgPos,
-  dragPortType: state => state.dragPortType,
+};
+
+
+
+const mutations = {
+  setArea(state, area) {
+    state.area = area;
+    state.pt = state.area.createSVGPoint();
+  },
+  setTools (state, tools) {
+    state.usableTools = tools;
+  },
+  setNewToolStatus(state, current) {
+    state.newToolStatus = current;
+  },
+  setDraggingNewToolPos(state, {x, y}) {
+    let tmp = _.cloneDeep(state.draggingTool);
+    tmp.x = x; tmp.y = y;
+    state.draggingTool = tmp;
+  },
+  setDraggingNewTool(state, tool) {
+    state.draggingTool.tool = tool;
+  },
+  addTool(state, tool) {
+    tool.id = state.toolId;
+    state.toolId = state.toolId + 1;
+    state.pipeline.tools.push(tool);
+  },
+  setDraggingPortStatus(state, current) {
+    state.draggingPortStatus = current;
+  },
+  setDraggingPort(state, {type, nodeIdx, portIdx, portX, portY}) {
+    state.draggingPort = {
+      type: type,
+      nodeIdx: nodeIdx,
+      portIdx: portIdx,
+      portX: portX,
+      portY: portY,
+    };
+  },
+  setDraggingPortMousePos(state, {x, y}) {
+    let tmp = _.cloneDeep(state.draggingPort);
+    state.pt.x = x;
+    state.pt.y = y;
+    let pos = state.pt.matrixTransform(state.area.getScreenCTM().inverse());
+    tmp.mouseX = pos.x; tmp.mouseY = pos.y;
+    state.draggingPort = tmp;
+  },
+  setCanCreateFile(state, current) {
+    state.canCreateFile = current;
+  },
+  addToolToPipeline(state, minDistPort) {
+    if(state.draggingPort.type == 'output') {
+      console.log(minDistPort.nodeIdx);
+      let sources = state.pipeline.tools[minDistPort.nodeIdx].inputs[minDistPort.portIdx].sources;
+      let source = {
+        nodeIdx: state.draggingPort.nodeIdx,
+        portIdx: state.draggingPort.portIdx,
+      }
+      if(sources == null) sources = [source];
+      else sources.push(source);
+    } else {
+      let sources = state.pipeline.tools[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx].sources;
+      let source = {
+        nodeIdx: minDistPort.nodeIdx,
+        portIdx: minDistPort.portIdx,
+      }
+      if(sources == null) sources = [source];
+      else sources.push(source);
+    }
+  },
+  addInputFile(state) {
+    let file = {
+      name: state.draggingPort.id,
+      label: state.draggingPort.label,
+      r: 37,
+      x: state.draggingPort.mouseX,
+      y: state.draggingPort.mouseY,
+      inputs: [],
+      outputs: [
+        {
+          id: state.draggingPort.id,
+          label: state.draggingPort.label,
+          x: 37,
+          y: 0,
+        }
+      ]
+    };
+    state.pipeline.inputs.push(file);
+  },
+  addOutputFile(state) {
+
+  }
 }
+
 
 const actions = {
   getAllTools ({ commit }) {
@@ -71,115 +132,6 @@ const actions = {
   }
 }
 
-// mutations
-const mutations = {
-  setTools (state, tools) {
-    state.tools = tools;
-  },
-  setIsClicked (state, current) {
-    state.isClicked = current;
-  },
-  setDraggingToolPos(state, {x, y}) {
-    var xPos = x - 75 / 2 + 'px';
-    var yPos = y - 65 / 2 + 'px';
-    var tmp = _.cloneDeep(state.draggingTool);
-    tmp.x = xPos;
-    tmp.y = yPos;
-    state.draggingTool = tmp;
-  },
-  setIsDragging(state, current) {
-    state.isDragging = current;
-  },
-  setDraggingTool(state, tool) {
-    state.draggingTool = tool;
-  },
-  setDraggingToolSVGPos(state, {x, y}) {
-    state.pt.x = x;
-    state.pt.y = y;
-    let pos = pt.matrixTransform(state.svgarea.getScreenCTM().inverse());
-    state.draggingTool.svgX = pos.x;
-    state.draggingTool.svgY = pos.Y;
-  },
-  setSVGAreaAndPt(state, svgRef) {
-    state.svgarea = svgRef;
-    state.pt = state.svgarea.createSVGPoint();
-  },
-  addTool(state, tool) {
-    tool.id = state.toolId;
-    state.toolId = state.toolId + 1;
-    state.pipeline.steps.push(tool);
-  },
-  moveNode (state, pos) {
-    let idx = pos.idx;
-    state.pt.x = pos.x; state.pt.y = pos.y;
-    var pos = state.pt.matrixTransform(state.svgarea.getScreenCTM().inverse());
-    let newObj = _.cloneDeep(state.pipeline.steps[idx]);
-    newObj.svgX = pos.x;
-    newObj.svgY = pos.y;
-    state.pipeline.steps.splice(idx, 1, newObj);
-  },
-  setNodeClicked (state, current) {
-    state.isNodeClicked = current;
-  },
-  setIsPortClickedStatus(state, current) {
-    state.isPortClicked = current;
-  },
-  setIsPortDraggingStatus(state, current) {
-    state.isPortDragging = current;
-  },
-  setDraggingPortInfo(state, {sourceNodeId, portId, portLabel, sourceX, sourceY}) {
-    let tmp = _.cloneDeep(state.draggingPort);
-    tmp.portId = portId;
-    tmp.portLabel = portLabel;
-    tmp.sourceX = sourceX;
-    tmp.sourceY = sourceY;
-    tmp.sourceNodeId = sourceNodeId;
-
-    state.draggingPort = tmp;
-  },
-  setDraggingPortPos(state, {x, y}) {
-    let tmp = _.cloneDeep(state.draggingPort);
-    tmp.currentX = x;
-    tmp.currentY = y;
-
-    state.draggingPort = tmp;
-  },
-  setCanCreateFile(state, current) {
-    state.canCreateFile = current;
-  },
-  updateSVGPos(state, {x, y}) {
-    let tmp = _.cloneDeep(state.svgPos);
-    tmp.x = x;
-    tmp.y = y;
-    state.svgPos = tmp;
-  },
-  setIsDragMode(state, current) {
-    state.isDragMode = current;
-  },
-  setDragPortType(state, current) {
-    state.dragPortType = current;
-  },
-  setPath(state, o) {
-    let steps = state.pipeline.steps;
-    if(o.dist < 20) {
-      let tmp;
-      if(o.portType == "input") {
-        tmp = _.cloneDeep(steps[o.nIdx].inputs[o.pIdx]);
-        tmp.sourceNodeId = o.nId;
-        tmp.sourcePortId = o.pId;
-        steps[o.nIdx].inputs.splice(o.pIdx, 1, tmp);
-      } else {
-        tmp = _.cloneDeep(steps[o.nIdx].inputs[o.pIdx]);
-        tmp.sourceNodeId = o.nId;
-        tmp.sourcePortId = o.pId;
-        steps[o.nIdx].outputs.splice(o.pIdx, 1, tmp);
-      }
-      
-    }
-  }
-
-}
-
 
 export default {
   state,
@@ -187,3 +139,20 @@ export default {
   actions,
   mutations
 }
+
+/*
+draggingTool
+1. click
+{
+  portType: "input | output",
+  portId: "",
+  nodeId: "",
+  x, y
+}
+
+2. drag 
+mouseX, mouseY 업데이트
+GhostEdge, circle 그려야함
+
+3. 놓으면
+output만 =>  port안에다가 sourceNodeId, sourcePortId 삽입*/

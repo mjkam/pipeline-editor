@@ -1,5 +1,5 @@
 <template>
-  <g class="node step" transform="matrix(1, 0, 0, 1, 0, 0)" tabindex="-1">
+  <g class="node step" transform="matrix(1, 0, 0, 1, 100, 100)" tabindex="-1">
     <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)">
       <circle cx="0" cy="0" r="37" class="outer"></circle>
       <circle cx="0" cy="0" r="27.75" class="inner"></circle>
