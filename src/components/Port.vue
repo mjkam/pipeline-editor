@@ -1,16 +1,15 @@
 <template>
   <g 
     class="port"
-    :class="type==1 ? 'input-port' : 'output-port'" 
-    :transform="`matrix(1, 0, 0, 1, ${info.x}, ${info.y})`">
+    :class="type=='input' ? 'input-port' : 'output-port'"
+    :transform="`matrix(1, 0, 0, 1, ${data.x}, ${data.y})`">
     <g 
       class="io-port"
-      @mousedown="handlePortMouseDownEvent"
-      v-on="isPortClicked ? { mousemove : handlePortDrag, mouseup: handlePortMouseUp } : null">
-      <circle cx="0" cy="0" r="7" class="port-handle"></circle>
+      @mousedown="portMouseDownHandler">
+      <circle cx="0" cy="0" r="7"></circle>
     </g>
-    <text alignment-baseline="middle" x="0" y="0" transform="matrix(1, 0, 0, 1, 0, 0)" class="label" >
-      {{ this.info.label }}
+    <text alignment-baseline="middle" x="0" y="0" transform="matrix(1, 0, 0, 1, 0, 0)" class="label">
+      {{ data.label }}
     </text>
   </g>
 </template>
@@ -21,62 +20,37 @@ import { mapState, mapActions, mapGetters, mapMutations } from 'vuex';
 export default {
   name: 'Port',
   props: {
-    info: Object,
+    data: Object,
     type: String,
     nodeIdx: Number,
+    idx: Number,
   },
   computed: {
     ...mapGetters([
-      'isPortClicked',
-      'steps',
-      "mouseSVGPos",
-      'getStepByIdx',
+      'pipeline',
     ]),
+    portPos() {
+      let tool = this.pipeline.tools[this.nodeIdx];
+      console.log(this.nodeIdx);
+      console.log(tool);
+      return {x: tool.x + this.data.x, y: tool.y + this.data.y};
+    },
   },
   methods: {
     ...mapMutations([
-      'setPortClick',
-      'setIsPortClickedStatus',
-      'setIsPortDraggingStatus',
-      'setDraggingPortInfo',
-      'setDraggingPortPos',
-      'setCanCreateFile',
-      'setDragPortType',
+      'setDraggingPortStatus',
+      'setDraggingPort',
     ]),
-    setPortClicked() {
-      this.setPortClick(true);
-    },
-    portDragEndHandler() {
-      this.setPortClick(false);
-    },
-    getPortPos() {
-      let t = this.getStepByIdx(this.nodeIdx);
-      return {x: t.svgX + this.info.x, y: t.svgY + this.info.y};
-    },
-    handlePortMouseDownEvent(e) {
-      this.setIsPortClickedStatus(true);
-      let node = this.getStepByIdx(this.nodeIdx);
-      let portPos = this.getPortPos();
-      let p = this.mouseSVGPos(e.clientX, e.clientY);
-      this.setDragPortType(this.type);
-      this.setDraggingPortPos({x: p.x, y: p.y});
-      this.setDraggingPortInfo({sourceNodeId: node.id, sourceX: portPos.x, sourceY: portPos.y, portId: this.info.id, portLabel: this.info.label});
-    },
-    handlePortDrag() {
-      this.setIsPortDraggingStatus(true);
-    },
-    handlePortMouseUp() {
-      this.setIsPortClickedStatus(false);
-      this.setIsPortDraggingStatus(false);
+    portMouseDownHandler() {
+      this.setDraggingPortStatus('clicked');
+      this.setDraggingPort({type: this.type, nodeIdx: this.nodeIdx, portIdx: this.idx, portX: this.portPos.x, portY: this.portPos.y});
     }
-
-    
   }
 }
 </script>
 
-
 <style lang="scss" scoped>
+
 .port {
   fill: #9a9a9a;
 
@@ -88,6 +62,7 @@ export default {
 .io-port:hover ~ .label {
   opacity: 1;
 }
+
 
 .input-port {
   .label {
@@ -103,7 +78,5 @@ export default {
     transform: translate(10px,0);
   }
 }
-
-
 
 </style>
