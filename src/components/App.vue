@@ -54,9 +54,22 @@ import GhostCircle from './GhostCircle';
 import Edge from './Edge';
 import GhostEdge from './GhostEdge';
 import _ from 'lodash';
+import * as d3 from 'd3';
 
 export default {
   name: 'app',
+  data () {
+    return {
+      // D3-zoom 이벤트가 만들어내는 zoom 객체와 동일한 모양으로 구성
+      // https://github.com/d3/d3-zoom/blob/master/src/transform.js
+      zoom: {
+        x: 100,	// Translate를 위한 X좌표 초기값
+        y: 100,		// Translate를 위한 Y좌표 초기값
+        k: 1 		// Scale 초기값
+      }
+      // ...
+    }
+  },
   components: {
     Port,
     Tool,
@@ -96,10 +109,8 @@ export default {
     },
     isDragMode() {
       if(this.draggingPortStatus != 'none' || this.draggingNodeStatus != 'none') {
-        console.log("!!");
         return true;
       }
-      console.log("!!@@");
       return false;
     },
     draggingNewToolStyle() {
@@ -126,7 +137,22 @@ export default {
       'addToolToPipeline',
       'addOutputFile',
       'addInputFile',
+      'setDraggingNodePos',
     ]),
+    setZoom () {
+      // zoom의 scale 범위, zoom 이벤트가 실행할 callback 등의 옵션을 정의한다.
+      const zoom = d3.zoom().scaleExtent([1, 10]).on('zoom', this.onZoom)
+      // selection을 $refs로 생성한다.
+          const selection = d3.select(this.$refs.area)
+          
+          selection.call(zoom)
+    },
+    onZoom () {
+      // 변경된 값을 data에 전달하면, 변경된 내용이 template에 반영된다.
+      this.zoom.x = d3.event.transform.x
+      this.zoom.y = d3.event.transform.y
+      this.zoom.k = d3.event.transform.k
+    },
     newToolClickHandler(e, tool) {
       e.preventDefault();
       this.setNewToolStatus('clicked');
@@ -167,15 +193,9 @@ export default {
         } else {
           this.setCanCreateFile(false);
         }
-      } else if(this.draggingNodeStatus == 'none') {
-        this.setDraggingNodeSta('dragging');
-        this.setDraggingPortMousePos({x: e.clientX, y: e.clientY});
-        let minPortDist = this.getMinDistPort().dist;
-        if(this.distFromMouseToDraggingPort > 50 && minPortDist > 50) {
-          this.setCanCreateFile(true);
-        } else {
-          this.setCanCreateFile(false);
-        }
+      } else if(this.draggingNodeStatus != 'none') {
+        this.setDraggingNodeStatus('dragging');
+        this.setDraggingNodePos({x: e.clientX, y: e.clientY});
       }
       
     },
@@ -221,19 +241,23 @@ export default {
     },
     areaMouseUpHandler(e) {
       e.preventDefault();
-      this.setCanCreateFile(false);
-      this.setDraggingPortStatus('none');
-      let minDistPort = this.getMinDistPort();
-      if(minDistPort.dist < 50) {
-        this.addToolToPipeline(minDistPort);
-      } else if(this.distFromMouseToDraggingPort >= 50) {
-        if(this.draggingPort.type == 'input') {
-          this.addInputFile();
-        } else {
-          this.addOutputFile();
+      if(this.draggingPortStatus != 'none') {
+        this.setCanCreateFile(false);
+        this.setDraggingPortStatus('none');
+        let minDistPort = this.getMinDistPort();
+        if(minDistPort.dist < 50) {
+          this.addToolToPipeline(minDistPort);
+        } else if(this.distFromMouseToDraggingPort >= 50) {
+          if(this.draggingPort.type == 'input') {
+            this.addInputFile();
+          } else {
+            this.addOutputFile();
+          }
         }
+      } else if(this.draggingNodeStatus != 'none') {
+        this.setDraggingNodeStatus('none');
       }
-    }
+    },
   },
   mounted() {
     this.setArea(this.$refs.area);

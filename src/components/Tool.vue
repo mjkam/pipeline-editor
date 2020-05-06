@@ -54,7 +54,7 @@ export default {
     ]),
     nodeMouseDownHandler(e) {
       this.setDraggingNodeStatus('clicked');
-      this.setDraggingNode({idx: this.idx});
+      this.setDraggingNode({idx: this.idx, startX: this.data.x, startY: this.data.y, mouseX: e.clientX, mouseY: e.clientY});
     }
   }
 }

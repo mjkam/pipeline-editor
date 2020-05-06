@@ -1,5 +1,6 @@
 import editor from '../../api/editor';
 import _ from 'lodash';
+import * as d3 from 'd3';
 
 const state ={
   pt: null,
@@ -33,7 +34,17 @@ const getters = {
 
 
 const mutations = {
+  setDraggingNodePos(state, {x, y}) {
+    let tmp = _.cloneDeep(state.nodes[state.draggingNode.idx]);
+    tmp.x += x;
+    tmp.y += y;
+    state.nodes.splice(state.draggingNode.idx, 1, tmp);
+  },
   setDraggingNode(state, node) {
+    //state.pt.x = node.mouseX;
+    //state.pt.y = node.mouseY;
+    //let pos = state.pt.matrixTransform(state.area.getScreenCTM().inverse());
+    //node.mouseX = pos.x; node.mouseY = pos.y;
     state.draggingNode = node;
   },
   setDraggingNodeStatus(state, current) {
@@ -153,7 +164,7 @@ const mutations = {
               portIdx: state.draggingPort.portIdx,
             }
           ],
-          x: 37,
+          x: -37,
           y: 0,
         }
       ],
