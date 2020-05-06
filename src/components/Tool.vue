@@ -1,6 +1,7 @@
 <template>
   <g class="node step" :transform="`matrix(1, 0, 0, 1, ${data.x}, ${data.y})`">
-    <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)">
+    <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)"
+      @mousedown="nodeMouseDownHandler">
       <circle cx="0" cy="0" :r="data.r" class="outer"></circle>
       <circle cx="0" cy="0" :r="data.r * 0.75" class="inner"></circle>
       <svg class="node-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 398.39 397.78" x="-10" y="-8" width="20" height="15">
@@ -30,6 +31,7 @@
 
 <script>
 import Port from './Port'
+import { mapGetters, mapMutations } from 'vuex';
 
 export default {
   name: 'Tool',
@@ -39,6 +41,21 @@ export default {
   props: {
     data: Object,
     idx: Number,
+  },
+  computed: {
+    ...mapGetters([
+      'draggingNodeStatus',
+    ])
+  },
+  methods: {
+    ...mapMutations([
+      'setDraggingNodeStatus',
+      'setDraggingNode',
+    ]),
+    nodeMouseDownHandler(e) {
+      this.setDraggingNodeStatus('clicked');
+      this.setDraggingNode({idx: this.idx});
+    }
   }
 }
 </script>

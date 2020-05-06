@@ -27,13 +27,12 @@ export default {
   },
   computed: {
     ...mapGetters([
-      'pipeline',
+      'nodes',
     ]),
     portPos() {
-      let tool = this.pipeline.tools[this.nodeIdx];
-      console.log(this.nodeIdx);
-      console.log(tool);
-      return {x: tool.x + this.data.x, y: tool.y + this.data.y};
+      console.log(this.data);
+      let node = this.nodes[this.nodeIdx];
+      return {x: node.x + this.data.x, y: node.y + this.data.y};
     },
   },
   methods: {

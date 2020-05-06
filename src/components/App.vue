@@ -17,12 +17,17 @@
         <rect x="0" y="0" width="100%" height="100%" class="pan-handle" transform="matrix(1, 0, 0, 1, 0, 0)"></rect>
         <svg class="workflow" tabindex="-1">
           <Tool
-            v-for="(tool, idx) in pipeline.tools"
+            v-for="(node, idx) in nodes.filter(node => node.type == 'tool')"
             :key="'tool' + idx"
-            :idx="idx"
-            :data="tool">
+            :idx="nodes.findIndex(n => n.id == node.id)"
+            :data="node">
           </Tool>
-          <File></File>
+          <File
+            v-for="(node, idx) in nodes.filter(node => node.type == 'input' || node.type == 'output')"
+            :key="'file' + idx"
+            :idx="nodes.findIndex(n => n.id == node.id)"
+            :data="node">
+          </File>
           <Edge 
             v-for="(edge, idx) in edges"
             :key="'edge'+idx"
@@ -67,15 +72,16 @@ export default {
       'draggingTool',
       'area',
       'pt',
-      'pipeline',
+      'nodes',
       'draggingPortStatus',
       'draggingPort',
       'canCreateFile',
+      'draggingNodeStatus',
     ]),
     edges() {
       let edges = [];
-      this.pipeline.tools.map((tool, tIdx) => {
-        tool.inputs.map((input, pIdx) => {
+      this.nodes.map((node, tIdx) => {
+        node.inputs.map((input, pIdx) => {
           input.sources.map((source, sIdx) => {
             edges.push({
               sourceNodeIdx: source.nodeIdx,
@@ -89,9 +95,11 @@ export default {
       return edges;
     },
     isDragMode() {
-      if(this.draggingPortStatus != 'none') {
+      if(this.draggingPortStatus != 'none' || this.draggingNodeStatus != 'none') {
+        console.log("!!");
         return true;
       }
+      console.log("!!@@");
       return false;
     },
     draggingNewToolStyle() {
@@ -109,11 +117,15 @@ export default {
       'setDraggingNewTool',
       'setDraggingNewToolPos',
       'setArea',
-      'addTool',
+      'addNode',
       'setDraggingPortMousePos',
       'setDraggingPortStatus',
+      'setDraggingNodeStatus',
+      'setDraggingNodePos',
       'setCanCreateFile',
       'addToolToPipeline',
+      'addOutputFile',
+      'addInputFile',
     ]),
     newToolClickHandler(e, tool) {
       e.preventDefault();
@@ -133,8 +145,9 @@ export default {
         var pos = this.pt.matrixTransform(this.area.getScreenCTM().inverse());
         draggingTool.x = pos.x;
         draggingTool.y = pos.y;
+        draggingTool.type = 'tool';
         
-        this.addTool(draggingTool);
+        this.addNode(draggingTool);
       }
       this.setNewToolStatus('none');
     },
@@ -145,14 +158,26 @@ export default {
     },
     areaMouseMoveHandler(e) {
       e.preventDefault();
-      this.setDraggingPortStatus('dragging');
-      this.setDraggingPortMousePos({x: e.clientX, y: e.clientY});
-      let minPortDist = this.getMinDistPort().dist;
-      if(this.distFromMouseToDraggingPort > 50 && minPortDist > 50) {
-        this.setCanCreateFile(true);
-      } else {
-        this.setCanCreateFile(false);
+      if(this.draggingPortStatus != 'none') {
+        this.setDraggingPortStatus('dragging');
+        this.setDraggingPortMousePos({x: e.clientX, y: e.clientY});
+        let minPortDist = this.getMinDistPort().dist;
+        if(this.distFromMouseToDraggingPort > 50 && minPortDist > 50) {
+          this.setCanCreateFile(true);
+        } else {
+          this.setCanCreateFile(false);
+        }
+      } else if(this.draggingNodeStatus == 'none') {
+        this.setDraggingNodeSta('dragging');
+        this.setDraggingPortMousePos({x: e.clientX, y: e.clientY});
+        let minPortDist = this.getMinDistPort().dist;
+        if(this.distFromMouseToDraggingPort > 50 && minPortDist > 50) {
+          this.setCanCreateFile(true);
+        } else {
+          this.setCanCreateFile(false);
+        }
       }
+      
     },
     getMinDistPort() {
       let minDist = Number.MAX_VALUE;
@@ -161,24 +186,24 @@ export default {
       let nodeIdx;
       let portIdx;
 
-      this.pipeline.tools.map((tool, tIdx) => {
+      this.nodes.map((node, tIdx) => {
         if(this.draggingPort.type == 'input') {
-          tool.outputs.map((port, pIdx) => {
-            let dist = this.getDist(this.draggingPort.mouseX, this.draggingPort.mouseY, tool.x + port.x, tool.y + port.y);
+          node.outputs.map((port, pIdx) => {
+            let dist = this.getDist(this.draggingPort.mouseX, this.draggingPort.mouseY, node.x + port.x, node.y + port.y);
             if(dist < minDist) {
               minDist = dist;
-              minNodeId = tool.id;
+              minNodeId = node.id;
               minPortId = port.id;
               nodeIdx = tIdx;
               portIdx = pIdx;
             }
           });
         } else {
-          tool.inputs.map((port, pIdx) => {
-            let dist = this.getDist(this.draggingPort.mouseX, this.draggingPort.mouseY, tool.x + port.x, tool.y + port.y);
+          node.inputs.map((port, pIdx) => {
+            let dist = this.getDist(this.draggingPort.mouseX, this.draggingPort.mouseY, node.x + port.x, node.y + port.y);
             if(dist < minDist) {
               minDist = dist;
-              minNodeId = tool.id;
+              minNodeId = node.id;
               minPortId = port.id;
               nodeIdx = tIdx;
               portIdx = pIdx;
@@ -203,10 +228,9 @@ export default {
         this.addToolToPipeline(minDistPort);
       } else if(this.distFromMouseToDraggingPort >= 50) {
         if(this.draggingPort.type == 'input') {
-          //input file
-          
+          this.addInputFile();
         } else {
-          //output file
+          this.addOutputFile();
         }
       }
     }

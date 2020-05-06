@@ -7,14 +7,12 @@ const state ={
   usableTools: [],
   draggingTool: {},
   newToolStatus: 'none',
-  pipeline: {
-    inputs: [],
-    outputs: [],
-    tools: []
-  },
-  toolId: 0,
+  nodes: [],
+  nodeId: 0,
   draggingPort: {},
   draggingPortStatus: 'none',
+  draggingNodeStatus: 'none',
+  draggingNode: {},
   canCreateFile: false,
 };
 
@@ -24,15 +22,23 @@ const getters = {
   draggingTool: state => state.draggingTool,
   area: state => state.area,
   pt: state => state.pt,
-  pipeline: state => state.pipeline,
+  nodes: state => state.nodes,
   draggingPortStatus: state => state.draggingPortStatus,
   draggingPort: state => state.draggingPort,
   canCreateFile: state => state.canCreateFile,
+  draggingNodeStatus: state => state.draggingNodeStatus,
+  draggingNode: state => state.draggingNode,
 };
 
 
 
 const mutations = {
+  setDraggingNode(state, node) {
+    state.draggingNode = node;
+  },
+  setDraggingNodeStatus(state, current) {
+    state.draggingNodeStatus = current;
+  },
   setArea(state, area) {
     state.area = area;
     state.pt = state.area.createSVGPoint();
@@ -51,10 +57,10 @@ const mutations = {
   setDraggingNewTool(state, tool) {
     state.draggingTool.tool = tool;
   },
-  addTool(state, tool) {
-    tool.id = state.toolId;
-    state.toolId = state.toolId + 1;
-    state.pipeline.tools.push(tool);
+  addNode(state, node) {
+    node.id = state.nodeId;
+    state.nodeId = state.nodeId + 1;
+    state.nodes.push(node);
   },
   setDraggingPortStatus(state, current) {
     state.draggingPortStatus = current;
@@ -81,8 +87,7 @@ const mutations = {
   },
   addToolToPipeline(state, minDistPort) {
     if(state.draggingPort.type == 'output') {
-      console.log(minDistPort.nodeIdx);
-      let sources = state.pipeline.tools[minDistPort.nodeIdx].inputs[minDistPort.portIdx].sources;
+      let sources = state.nodes[minDistPort.nodeIdx].inputs[minDistPort.portIdx].sources;
       let source = {
         nodeIdx: state.draggingPort.nodeIdx,
         portIdx: state.draggingPort.portIdx,
@@ -90,7 +95,7 @@ const mutations = {
       if(sources == null) sources = [source];
       else sources.push(source);
     } else {
-      let sources = state.pipeline.tools[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx].sources;
+      let sources = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx].sources;
       let source = {
         nodeIdx: minDistPort.nodeIdx,
         portIdx: minDistPort.portIdx,
@@ -100,26 +105,64 @@ const mutations = {
     }
   },
   addInputFile(state) {
+    let port = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx];
     let file = {
-      name: state.draggingPort.id,
-      label: state.draggingPort.label,
+      type: 'input',
+      name: port.id,
+      label: port.label,
       r: 37,
       x: state.draggingPort.mouseX,
       y: state.draggingPort.mouseY,
       inputs: [],
       outputs: [
         {
-          id: state.draggingPort.id,
-          label: state.draggingPort.label,
+          id: port.id,
+          label: port.label,
           x: 37,
           y: 0,
         }
       ]
     };
-    state.pipeline.inputs.push(file);
+    file.id = state.nodeId;
+    state.nodeId += 1;
+    state.nodes.push(file);
+    let sources = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx].sources;
+    let source = {
+      nodeIdx: state.nodes.findIndex(n => n.id == file.id),
+      portIdx: 0,
+    }
+    if(sources == null) sources = [source];
+    else sources.push(source);
   },
   addOutputFile(state) {
-
+    let port = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx];
+    let file = {
+      type: 'output',
+      name: port.id,
+      label: port.label,
+      r: 37,
+      x: state.draggingPort.mouseX,
+      y: state.draggingPort.mouseY,
+      inputs: [
+        {
+          id: port.id,
+          label: port.label,
+          sources: [
+            {
+              nodeIdx: state.draggingPort.nodeIdx,
+              portIdx: state.draggingPort.portIdx,
+            }
+          ],
+          x: 37,
+          y: 0,
+        }
+      ],
+      outputs: [
+      ]
+    };
+    file.id = state.nodeId;
+    state.nodeId += 1;
+    state.nodes.push(file);
   }
 }
 

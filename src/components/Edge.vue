@@ -16,12 +16,12 @@ export default {
   },
   computed: {
     ...mapGetters([
-      'pipeline',
+      'nodes',
     ]),
     d() {
-      let sourceNode = this.pipeline.tools[this.data.sourceNodeIdx];
+      let sourceNode = this.nodes[this.data.sourceNodeIdx];
       let sourcePort = sourceNode.outputs[this.data.sourcePortIdx];
-      let desNode = this.pipeline.tools[this.data.desNodeIdx];
+      let desNode = this.nodes[this.data.desNodeIdx];
       let desPort = desNode.inputs[this.data.desPortIdx];
 
       const link = d3.linkHorizontal()({
