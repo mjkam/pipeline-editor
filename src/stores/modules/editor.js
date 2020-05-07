@@ -11,9 +11,8 @@ const state ={
   nodes: [],
   nodeId: 0,
   draggingPort: {},
-  draggingPortStatus: 'none',
-  draggingNodeStatus: 'none',
   draggingNode: {},
+  draggingPortStatus: 'none',
   canCreateFile: false,
 };
 
@@ -24,27 +23,25 @@ const getters = {
   area: state => state.area,
   pt: state => state.pt,
   nodes: state => state.nodes,
-  draggingPortStatus: state => state.draggingPortStatus,
   draggingPort: state => state.draggingPort,
   canCreateFile: state => state.canCreateFile,
-  draggingNodeStatus: state => state.draggingNodeStatus,
   draggingNode: state => state.draggingNode,
+  draggingPortStatus: state => state.draggingPortStatus,
 };
 
 
 
 const mutations = {
+  setDraggingPortStatus(state, current) {
+    state.draggingPortStatus = current;
+  },
   setDraggingNodePos(state, {x, y}) {
-    let tmp = _.cloneDeep(state.nodes[state.draggingNode.idx]);
-    tmp.x += x;
-    tmp.y += y;
-    state.nodes.splice(state.draggingNode.idx, 1, tmp);
+    let tmp = _.cloneDeep(state.nodes.find(n => n.id == state.draggingNode.id));
+    tmp.x += (x - state.draggingNode.startX);
+    tmp.y += (y - state.draggingNode.startY);
+    state.nodes.splice(state.nodes.findIndex(n => n.id == state.draggingNode.id), 1, tmp);
   },
   setDraggingNode(state, node) {
-    //state.pt.x = node.mouseX;
-    //state.pt.y = node.mouseY;
-    //let pos = state.pt.matrixTransform(state.area.getScreenCTM().inverse());
-    //node.mouseX = pos.x; node.mouseY = pos.y;
     state.draggingNode = node;
   },
   setDraggingNodeStatus(state, current) {
@@ -73,50 +70,42 @@ const mutations = {
     state.nodeId = state.nodeId + 1;
     state.nodes.push(node);
   },
-  setDraggingPortStatus(state, current) {
-    state.draggingPortStatus = current;
-  },
-  setDraggingPort(state, {type, nodeIdx, portIdx, portX, portY}) {
+  setDraggingPort(state, {type, nodeId, portId}) {
     state.draggingPort = {
       type: type,
-      nodeIdx: nodeIdx,
-      portIdx: portIdx,
-      portX: portX,
-      portY: portY,
+      nodeId: nodeId,
+      portId: portId,
     };
   },
   setDraggingPortMousePos(state, {x, y}) {
     let tmp = _.cloneDeep(state.draggingPort);
-    state.pt.x = x;
-    state.pt.y = y;
-    let pos = state.pt.matrixTransform(state.area.getScreenCTM().inverse());
-    tmp.mouseX = pos.x; tmp.mouseY = pos.y;
+    tmp.mouseX = x; tmp.mouseY = y;
     state.draggingPort = tmp;
   },
   setCanCreateFile(state, current) {
     state.canCreateFile = current;
   },
-  addToolToPipeline(state, minDistPort) {
+  addSourceToNode(state, minDistPort) {
     if(state.draggingPort.type == 'output') {
-      let sources = state.nodes[minDistPort.nodeIdx].inputs[minDistPort.portIdx].sources;
+      let sources = state.nodes.find(n => n.id == minDistPort.nodeId).inputs.find(port => port.id == minDistPort.portId).sources;
       let source = {
-        nodeIdx: state.draggingPort.nodeIdx,
-        portIdx: state.draggingPort.portIdx,
+        nodeId: state.draggingPort.nodeId,
+        portId: state.draggingPort.portId,
       }
       if(sources == null) sources = [source];
       else sources.push(source);
     } else {
       let sources = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx].sources;
       let source = {
-        nodeIdx: minDistPort.nodeIdx,
-        portIdx: minDistPort.portIdx,
+        nodeId: minDistPort.nodeId,
+        portId: minDistPort.portId,
       }
       if(sources == null) sources = [source];
       else sources.push(source);
     }
   },
   addInputFile(state) {
-    let port = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx];
+    let port = state.nodes.find(n => n.id == state.draggingPort.nodeId).inputs.find(p => p.id == state.draggingPort.portId);
     let file = {
       type: 'input',
       name: port.id,
@@ -137,16 +126,16 @@ const mutations = {
     file.id = state.nodeId;
     state.nodeId += 1;
     state.nodes.push(file);
-    let sources = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx].sources;
+    let sources = port.sources;
     let source = {
-      nodeIdx: state.nodes.findIndex(n => n.id == file.id),
-      portIdx: 0,
+      nodeId: file.id,
+      portId: port.id,
     }
     if(sources == null) sources = [source];
     else sources.push(source);
   },
   addOutputFile(state) {
-    let port = state.nodes[state.draggingPort.nodeIdx].inputs[state.draggingPort.portIdx];
+    let port = state.nodes.find(n => n.id == state.draggingPort.nodeId).outputs.find(p => p.id == state.draggingPort.portId);
     let file = {
       type: 'output',
       name: port.id,
@@ -160,8 +149,8 @@ const mutations = {
           label: port.label,
           sources: [
             {
-              nodeIdx: state.draggingPort.nodeIdx,
-              portIdx: state.draggingPort.portIdx,
+              nodeId: state.draggingPort.nodeId,
+              portId: state.draggingPort.portId,
             }
           ],
           x: -37,

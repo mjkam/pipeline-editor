@@ -12,20 +12,17 @@
       </div>
     </div>
     <div class="right_container">
-      <svg class="cwl-workflow" ref="area"
-        v-on="isDragMode ? {mousemove: areaMouseMoveHandler, mouseup: areaMouseUpHandler} : null">
+      <svg class="cwl-workflow" ref="area">
         <rect x="0" y="0" width="100%" height="100%" class="pan-handle" transform="matrix(1, 0, 0, 1, 0, 0)"></rect>
         <svg class="workflow" tabindex="-1">
           <Tool
             v-for="(node, idx) in nodes.filter(node => node.type == 'tool')"
             :key="'tool' + idx"
-            :idx="nodes.findIndex(n => n.id == node.id)"
             :data="node">
           </Tool>
           <File
             v-for="(node, idx) in nodes.filter(node => node.type == 'input' || node.type == 'output')"
             :key="'file' + idx"
-            :idx="nodes.findIndex(n => n.id == node.id)"
             :data="node">
           </File>
           <Edge 
@@ -58,18 +55,6 @@ import * as d3 from 'd3';
 
 export default {
   name: 'app',
-  data () {
-    return {
-      // D3-zoom 이벤트가 만들어내는 zoom 객체와 동일한 모양으로 구성
-      // https://github.com/d3/d3-zoom/blob/master/src/transform.js
-      zoom: {
-        x: 100,	// Translate를 위한 X좌표 초기값
-        y: 100,		// Translate를 위한 Y좌표 초기값
-        k: 1 		// Scale 초기값
-      }
-      // ...
-    }
-  },
   components: {
     Port,
     Tool,
@@ -86,32 +71,26 @@ export default {
       'area',
       'pt',
       'nodes',
-      'draggingPortStatus',
       'draggingPort',
       'canCreateFile',
-      'draggingNodeStatus',
+      'draggingPortStatus',
+      'draggingNode',
     ]),
     edges() {
       let edges = [];
-      this.nodes.map((node, tIdx) => {
-        node.inputs.map((input, pIdx) => {
-          input.sources.map((source, sIdx) => {
+      this.nodes.map(node => {
+        node.inputs.map(port => {
+          port.sources.map(source => {
             edges.push({
-              sourceNodeIdx: source.nodeIdx,
-              sourcePortIdx: source.portIdx,
-              desNodeIdx: tIdx,
-              desPortIdx: pIdx,
+              sourceNodeId: source.nodeId,
+              sourcePortId: source.portId,
+              desNodeId: node.id,
+              desPortId: port.id,
             })
           });
         });
       });
       return edges;
-    },
-    isDragMode() {
-      if(this.draggingPortStatus != 'none' || this.draggingNodeStatus != 'none') {
-        return true;
-      }
-      return false;
     },
     draggingNewToolStyle() {
       let top = this.draggingTool.y - 65 / 2;
@@ -130,8 +109,6 @@ export default {
       'setArea',
       'addNode',
       'setDraggingPortMousePos',
-      'setDraggingPortStatus',
-      'setDraggingNodeStatus',
       'setDraggingNodePos',
       'setCanCreateFile',
       'addToolToPipeline',
@@ -182,23 +159,6 @@ export default {
       this.setNewToolStatus('dragging');
       this.setDraggingNewToolPos({x: e.clientX, y: e.clientY});
     },
-    areaMouseMoveHandler(e) {
-      e.preventDefault();
-      if(this.draggingPortStatus != 'none') {
-        this.setDraggingPortStatus('dragging');
-        this.setDraggingPortMousePos({x: e.clientX, y: e.clientY});
-        let minPortDist = this.getMinDistPort().dist;
-        if(this.distFromMouseToDraggingPort > 50 && minPortDist > 50) {
-          this.setCanCreateFile(true);
-        } else {
-          this.setCanCreateFile(false);
-        }
-      } else if(this.draggingNodeStatus != 'none') {
-        this.setDraggingNodeStatus('dragging');
-        this.setDraggingNodePos({x: e.clientX, y: e.clientY});
-      }
-      
-    },
     getMinDistPort() {
       let minDist = Number.MAX_VALUE;
       let minPortId = '';
@@ -238,25 +198,6 @@ export default {
       let a = x1 - x2;
       let b = y1 - y2;
       return Math.sqrt(a*a + b*b);
-    },
-    areaMouseUpHandler(e) {
-      e.preventDefault();
-      if(this.draggingPortStatus != 'none') {
-        this.setCanCreateFile(false);
-        this.setDraggingPortStatus('none');
-        let minDistPort = this.getMinDistPort();
-        if(minDistPort.dist < 50) {
-          this.addToolToPipeline(minDistPort);
-        } else if(this.distFromMouseToDraggingPort >= 50) {
-          if(this.draggingPort.type == 'input') {
-            this.addInputFile();
-          } else {
-            this.addOutputFile();
-          }
-        }
-      } else if(this.draggingNodeStatus != 'none') {
-        this.setDraggingNodeStatus('none');
-      }
     },
   },
   mounted() {

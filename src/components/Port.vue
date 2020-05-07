@@ -4,8 +4,7 @@
     :class="type=='input' ? 'input-port' : 'output-port'"
     :transform="`matrix(1, 0, 0, 1, ${data.x}, ${data.y})`">
     <g 
-      class="io-port"
-      @mousedown="portMouseDownHandler">
+      class="io-port" ref="port">
       <circle cx="0" cy="0" r="7"></circle>
     </g>
     <text alignment-baseline="middle" x="0" y="0" transform="matrix(1, 0, 0, 1, 0, 0)" class="label">
@@ -16,34 +15,118 @@
 
 <script>
 import { mapState, mapActions, mapGetters, mapMutations } from 'vuex';
+import * as d3 from 'd3';
 
 export default {
   name: 'Port',
   props: {
     data: Object,
     type: String,
-    nodeIdx: Number,
-    idx: Number,
+    nodeId: Number,
   },
   computed: {
     ...mapGetters([
       'nodes',
+      'draggingPort',
     ]),
-    portPos() {
-      console.log(this.data);
-      let node = this.nodes[this.nodeIdx];
-      return {x: node.x + this.data.x, y: node.y + this.data.y};
+    node() {
+      return this.nodes.find(n => n.id == this.nodeId);
     },
+    portPos() {
+      return {x: this.node.x + this.data.x, y: this.node.y + this.data.y};
+    },
+    distFromMouseToDraggingPort() {
+      return this.getDist(this.portPos.x, this.portPos.y, this.draggingPort.mouseX, this.draggingPort.mouseY);
+    }
   },
   methods: {
     ...mapMutations([
-      'setDraggingPortStatus',
       'setDraggingPort',
+      'setCanCreateFile',
+      'addSourceToNode',
+      'setDraggingPortStatus',
+      'setDraggingPortMousePos',
+      'addInputFile',
+      'addOutputFile',
     ]),
-    portMouseDownHandler() {
-      this.setDraggingPortStatus('clicked');
-      this.setDraggingPort({type: this.type, nodeIdx: this.nodeIdx, portIdx: this.idx, portX: this.portPos.x, portY: this.portPos.y});
-    }
+    dragStart() {
+      this.setDraggingPort({type: this.type, nodeId: this.nodeId, portId: this.data.id});
+    },
+    dragging() {
+      this.setDraggingPortStatus('dragging');
+      this.setDraggingPortMousePos({x: this.portPos.x + d3.event.x, y: this.portPos.y + d3.event.y});
+      let minPortDist = this.getMinDistPort().dist;
+      if(this.distFromMouseToDraggingPort > 50 && minPortDist > 50) {
+        this.setCanCreateFile(true);
+      } else {
+        this.setCanCreateFile(false);
+      }
+    },
+    dragEnd() {
+      this.setDraggingPortStatus('none');
+      this.setCanCreateFile(false);
+      let minDistPort = this.getMinDistPort();
+      if(minDistPort.dist < 50) {
+        this.addSourceToNode(minDistPort);
+      } else if(this.distFromMouseToDraggingPort >= 50) {
+        if(this.draggingPort.type == 'input') {
+          this.addInputFile();
+        } else {
+          this.addOutputFile();
+        }
+      }
+    },
+    getMinDistPort() {
+      let minDist = Number.MAX_VALUE;
+      let minPortId = '';
+      let minNodeId = '';
+
+      if(this.draggingPort.type == 'input') return this.getDistsFromOutputPorts();
+      else return this.getDistsFromInputPorts();
+    },
+    getDistsFromInputPorts() {
+      let minDist = Number.MAX_VALUE;
+      let minPortId = '';
+      let minNodeId = '';
+
+      this.nodes.map((node, nIdx) => {
+        node.inputs.map((port, pIdx) => {
+          let dist = this.getDist(this.draggingPort.mouseX, this.draggingPort.mouseY, node.x + port.x, node.y + port.y);
+          if(dist < minDist) {
+            minDist = dist;
+            minNodeId = node.id;
+            minPortId = port.id;
+          }
+        });
+      });
+      return {dist: minDist, portId: minPortId, nodeId: minNodeId};
+    },
+    getDistsFromOutputPorts() {
+      let minDist = Number.MAX_VALUE;
+      let minPortId = '';
+      let minNodeId = '';
+
+      this.nodes.map((node, nIdx) => {
+        node.outputs.map((port, pIdx) => {
+          let dist = this.getDist(this.draggingPort.mouseX, this.draggingPort.mouseY, this.portPos.x, this.portPos.y);
+          if(dist < minDist) {
+            minDist = dist;
+            minNodeId = node.id;
+            minPortId = port.id;
+          }
+        });
+      });
+      return {dist: minDist, portId: minPortId, nodeId: minNodeId};
+    },
+    getDist(x1, y1, x2, y2) {
+      let a = x1 - x2;
+      let b = y1 - y2;
+      return Math.sqrt(a*a + b*b);
+    },
+  },
+  mounted() {
+    const drag = d3.drag().on('start', this.dragStart).on('drag', this.dragging).on('end', this.dragEnd);
+    d3.select(this.$refs.port).call(drag);
   }
 }
 </script>

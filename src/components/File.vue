@@ -1,6 +1,6 @@
 <template>
   <g class="node step" :transform="`matrix(1, 0, 0, 1, ${data.x}, ${data.y})`">
-    <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)" ref="core">
+    <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)" ref="file">
       <circle cx="0" cy="0" :r="data.r" class="outer"></circle>
       <circle cx="0" cy="0" :r="data.r * 0.75" class="inner"></circle>
       <svg v-if="data.type == 'input'" class="node-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 499 462.86" x="-11" y="-10" width="20" height="20">
@@ -16,19 +16,17 @@
     </g>
     <text transform="matrix(1, 0, 0, 1, 0, 74)" class="title label">{{ data.label }}</text>
     <Port
-      v-for="(port, index) in data.inputs"
-      :key="'inport' + index"
+      v-for="(port, idx) in data.inputs"
+      :key="'inport' + idx"
       :data="port"
-      :idx="index"
-      :nodeIdx="idx"
+      :nodeId="data.id"
       :type="'input'">
     </Port>
     <Port
-      v-for="(port, index) in data.outputs"
-      :key="'outport' + index"
+      v-for="(port, idx) in data.outputs"
+      :key="'outport' + idx"
       :data="port"
-      :idx="index"
-      :nodeIdx="idx"
+      :nodeId="data.id"
       :type="'output'">
     </Port>
   </g>
@@ -46,32 +44,22 @@ export default {
   },
   props: {
     data: Object,
-    idx: Number,
   },
   methods: {
     ...mapMutations([
-      'setDraggingNodeStatus',
       'setDraggingNode',
       'setDraggingNodePos',
     ]),
-    nodeMouseDownHandler(e) {
-      this.setDraggingNodeStatus('clicked');
-      this.setDraggingNode({idx: this.idx, startX: this.data.x, startY: this.data.y, mouseX: d3.event.x, mouseY: d3.event.y});
+    dragStart() {
+      this.setDraggingNode({id: this.data.id, startX: d3.event.x, startY: d3.event.y});
     },
-    start() {
-      console.log('start');
-    },
-    drag() {
+    dragging() {
       this.setDraggingNodePos({x: d3.event.x, y: d3.event.y});
     },
-    end() {
-      console.log('end');
-    }
   },
   mounted() {
-    const drag = d3.drag().on('start', this.nodeMouseDownHandler).on('drag', this.drag).on('end', this.end);
-    const selection = d3.select(this.$refs.core);
-    selection.call(drag);
+    const drag = d3.drag().on('start', this.dragStart).on('drag', this.dragging);
+    d3.select(this.$refs.file).call(drag);
   }
 }
 </script>

@@ -1,7 +1,6 @@
 <template>
   <g class="node step" :transform="`matrix(1, 0, 0, 1, ${data.x}, ${data.y})`">
-    <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)"
-      @mousedown="nodeMouseDownHandler">
+    <g class="core" transform="matrix(1, 0, 0, 1, 0, 0)" ref="tool">
       <circle cx="0" cy="0" :r="data.r" class="outer"></circle>
       <circle cx="0" cy="0" :r="data.r * 0.75" class="inner"></circle>
       <svg class="node-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 398.39 397.78" x="-10" y="-8" width="20" height="15">
@@ -11,19 +10,17 @@
     </g>
     <text transform="matrix(1, 0, 0, 1, 0, 74)" class="title label">{{ data.label }}</text>
     <Port
-      v-for="(port, index) in data.inputs"
-      :key="'inport' + index"
+      v-for="(port, idx) in data.inputs"
+      :key="'inport' + idx"
       :data="port"
-      :idx="index"
-      :nodeIdx="idx"
+      :nodeId="data.id"
       :type="'input'">
     </Port>
     <Port
-      v-for="(port, index) in data.outputs"
-      :key="'outport' + index"
+      v-for="(port, idx) in data.outputs"
+      :key="'outport' + idx"
       :data="port"
-      :idx="index"
-      :nodeIdx="idx"
+      :nodeId="data.id"
       :type="'output'">
     </Port>
   </g>
@@ -32,6 +29,7 @@
 <script>
 import Port from './Port'
 import { mapGetters, mapMutations } from 'vuex';
+import * as d3 from 'd3';
 
 export default {
   name: 'Tool',
@@ -40,7 +38,6 @@ export default {
   },
   props: {
     data: Object,
-    idx: Number,
   },
   computed: {
     ...mapGetters([
@@ -51,11 +48,18 @@ export default {
     ...mapMutations([
       'setDraggingNodeStatus',
       'setDraggingNode',
+      'setDraggingNodePos',
     ]),
-    nodeMouseDownHandler(e) {
-      this.setDraggingNodeStatus('clicked');
-      this.setDraggingNode({idx: this.idx, startX: this.data.x, startY: this.data.y, mouseX: e.clientX, mouseY: e.clientY});
+    dragStart() {
+      this.setDraggingNode({id: this.data.id, startX: d3.event.x, startY: d3.event.y});
+    },
+    dragging() {
+      this.setDraggingNodePos({x: d3.event.x, y: d3.event.y});
     }
+  },
+  mounted() {
+    const drag = d3.drag().on('start', this.dragStart).on('drag', this.dragging);
+    d3.select(this.$refs.tool).call(drag);
   }
 }
 </script>
