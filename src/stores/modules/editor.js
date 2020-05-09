@@ -14,6 +14,7 @@ const state ={
   draggingNode: {},
   draggingPortStatus: 'none',
   canCreateFile: false,
+  zoom: {x: 0, y: 0, k: 1},
 };
 
 const getters = {
@@ -27,11 +28,15 @@ const getters = {
   canCreateFile: state => state.canCreateFile,
   draggingNode: state => state.draggingNode,
   draggingPortStatus: state => state.draggingPortStatus,
+  zoom: state => state.zoom,
 };
 
 
 
 const mutations = {
+  setZoom(state, current) {
+    state.zoom = current;
+  },
   setDraggingPortStatus(state, current) {
     state.draggingPortStatus = current;
   },
@@ -182,20 +187,3 @@ export default {
   actions,
   mutations
 }
-
-/*
-draggingTool
-1. click
-{
-  portType: "input | output",
-  portId: "",
-  nodeId: "",
-  x, y
-}
-
-2. drag 
-mouseX, mouseY 업데이트
-GhostEdge, circle 그려야함
-
-3. 놓으면
-output만 =>  port안에다가 sourceNodeId, sourcePortId 삽입*/

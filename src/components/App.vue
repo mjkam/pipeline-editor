@@ -13,8 +13,8 @@
     </div>
     <div class="right_container">
       <svg class="cwl-workflow" ref="area">
-        <rect x="0" y="0" width="100%" height="100%" class="pan-handle" transform="matrix(1, 0, 0, 1, 0, 0)"></rect>
-        <svg class="workflow" tabindex="-1">
+        <rect x="0" y="0" width="100%" height="100%" class="pan-handle" ref="panHandle" transform="matrix(1, 0, 0, 1, 0, 0)"></rect>
+        <g class="workflow" :transform="`matrix(${zoom.k}, 0, 0, ${zoom.k}, ${zoom.x}, ${zoom.y})`">
           <Tool
             v-for="(node, idx) in nodes.filter(node => node.type == 'tool')"
             :key="'tool' + idx"
@@ -32,7 +32,7 @@
           </Edge>
           <GhostCircle v-if="canCreateFile"></GhostCircle>
           <GhostEdge v-if="draggingPortStatus == 'dragging'"></GhostEdge>
-        </svg>
+        </g>
       </svg>
     </div>
     <div class="drag-container" v-if="newToolStatus == 'dragging'" :style="draggingNewToolStyle">
@@ -75,6 +75,7 @@ export default {
       'canCreateFile',
       'draggingPortStatus',
       'draggingNode',
+      'zoom',
     ]),
     edges() {
       let edges = [];
@@ -115,15 +116,8 @@ export default {
       'addOutputFile',
       'addInputFile',
       'setDraggingNodePos',
+      'setZoom',
     ]),
-    setZoom () {
-      // zoom의 scale 범위, zoom 이벤트가 실행할 callback 등의 옵션을 정의한다.
-      const zoom = d3.zoom().scaleExtent([1, 10]).on('zoom', this.onZoom)
-      // selection을 $refs로 생성한다.
-          const selection = d3.select(this.$refs.area)
-          
-          selection.call(zoom)
-    },
     onZoom () {
       // 변경된 값을 data에 전달하면, 변경된 내용이 template에 반영된다.
       this.zoom.x = d3.event.transform.x
@@ -146,8 +140,8 @@ export default {
         let draggingTool = _.cloneDeep(this.draggingTool.tool);
         this.pt.x = e.clientX; this.pt.y = e.clientY;
         var pos = this.pt.matrixTransform(this.area.getScreenCTM().inverse());
-        draggingTool.x = pos.x;
-        draggingTool.y = pos.y;
+        draggingTool.x = (pos.x - this.zoom.x) / this.zoom.k;
+        draggingTool.y = (pos.y - this.zoom.y) / this.zoom.k;
         draggingTool.type = 'tool';
         
         this.addNode(draggingTool);
@@ -199,9 +193,26 @@ export default {
       let b = y1 - y2;
       return Math.sqrt(a*a + b*b);
     },
+    onZoom() {
+      let {k ,x, y} = d3.event.transform;
+      this.setZoom({x: x, y: y, k: k});
+    },
+    initZoom () {
+      // zoom 값을 초기화한다.
+      // 초기화된 zoom 값을 d3-zoom API에 전달한다.
+      return d3.zoomIdentity
+        .translate(100, 100)
+        .scale(1);
+    },
   },
   mounted() {
     this.setArea(this.$refs.area);
+    const zoom= d3.zoom().on('zoom', this.onZoom)
+    const selection = d3.select(this.$refs.panHandle);
+    selection
+      .call(zoom)
+      // 초기화된 zoom 값을 적용한다.
+      .call(zoom.transform, this.initZoom());
   },
   created: function() {
     this.$store.dispatch('getAllTools');
@@ -275,9 +286,9 @@ svg {
 }
 
 .workflow {
-  width: 100%;
-  height: 100%;
-  transform: translateZ(0);
+  background: red;
+  fill: red;
+  stroke: red;
 }
 
 .pan-handle {
